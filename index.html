@@ -235,6 +235,8 @@
     </div>
 
   </div>
+
+  <div id="mission-details" hidden></div>
 </section>
 
     <p class="footer">
@@ -391,6 +393,107 @@
       } finally {
         setLoading(false);
       }
+    });
+
+    // Abrir uma missão e consultar suas perguntas.
+    const missionDetails =
+      document.getElementById("mission-details");
+
+    const missionsList =
+      document.getElementById("missions-list");
+
+    document.querySelectorAll("[data-day]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const dayNumber = Number(button.dataset.day);
+
+        button.disabled = true;
+        button.textContent = "Carregando...";
+
+        try {
+          const response = await callFunction(
+            "get-mission",
+            { day_number: dayNumber }
+          );
+
+          if (!response.ok || !response.result.success) {
+            throw new Error(
+              response.result.error ||
+              "Não foi possível carregar a missão."
+            );
+          }
+
+          const mission = response.result.mission;
+
+          missionDetails.replaceChildren();
+
+          const heading = document.createElement("h3");
+          heading.textContent = mission.title;
+          missionDetails.appendChild(heading);
+
+          if (mission.description) {
+            const description = document.createElement("p");
+            description.textContent = mission.description;
+            missionDetails.appendChild(description);
+          }
+
+          mission.challenges.forEach((challenge, index) => {
+            const question = document.createElement("div");
+            question.style.marginTop = "24px";
+
+            const title = document.createElement("h4");
+            title.textContent =
+              `Pergunta ${index + 1}: ${challenge.title || ""}`;
+
+            const prompt = document.createElement("p");
+            prompt.textContent = challenge.prompt;
+
+            question.appendChild(title);
+            question.appendChild(prompt);
+
+            const options = challenge.options;
+
+            if (Array.isArray(options)) {
+              options.forEach((option, optionIndex) => {
+                const item = document.createElement("p");
+                const letter = "ABCD"[optionIndex] || "";
+                item.textContent =
+                  `${letter}) ${typeof option === "string"
+                    ? option
+                    : JSON.stringify(option)}`;
+                question.appendChild(item);
+              });
+            } else if (options && typeof options === "object") {
+              Object.entries(options).forEach(([letter, value]) => {
+                const item = document.createElement("p");
+                item.textContent = `${letter}) ${value}`;
+                question.appendChild(item);
+              });
+            }
+
+            missionDetails.appendChild(question);
+          });
+
+          const backButton = document.createElement("button");
+          backButton.type = "button";
+          backButton.textContent = "Voltar às missões";
+
+          backButton.addEventListener("click", () => {
+            missionDetails.hidden = true;
+            missionsList.hidden = false;
+          });
+
+          missionDetails.appendChild(backButton);
+
+          missionsList.hidden = true;
+          missionDetails.hidden = false;
+
+        } catch (error) {
+          alert(error.message);
+        } finally {
+          button.disabled = false;
+          button.textContent = "Ver missão";
+        }
+      });
     });
   </script>
 </body>
