@@ -745,33 +745,6 @@
         }
       });
     });            
-}
-
-            missionDetails.appendChild(question);
-          });
-
-          const backButton = document.createElement("button");
-          backButton.type = "button";
-          backButton.textContent = "Voltar às missões";
-
-          backButton.addEventListener("click", () => {
-            missionDetails.hidden = true;
-            missionsList.hidden = false;
-          });
-
-          missionDetails.appendChild(backButton);
-
-          missionsList.hidden = true;
-          missionDetails.hidden = false;
-
-        } catch (error) {
-          alert(error.message);
-        } finally {
-          button.disabled = false;
-          button.textContent = "Ver missão";
-        }
-      });
-    });
   </script>
 </body>
 </html>
