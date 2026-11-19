@@ -3,14 +3,11 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Missão Qualidade 2026</title>
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
@@ -30,7 +27,7 @@
       background: white;
       border-radius: 20px;
       padding: 32px 24px;
-      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.08);
+      box-shadow: 0 12px 35px rgba(0,0,0,0.08);
     }
 
     .icon {
@@ -48,6 +45,7 @@
       text-align: center;
       color: #60758a;
       margin-bottom: 28px;
+      line-height: 1.5;
     }
 
     label {
@@ -71,7 +69,7 @@
     button {
       width: 100%;
       padding: 15px;
-      margin-top: 24px;
+      margin-top: 20px;
       border: 0;
       border-radius: 10px;
       background: #0875c1;
@@ -81,8 +79,22 @@
       cursor: pointer;
     }
 
-    button:hover {
-      background: #075b9a;
+    button.secondary {
+      background: white;
+      color: #075b9a;
+      border: 2px solid #0875c1;
+      margin-top: 12px;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+
+    .message {
+      margin-top: 16px;
+      text-align: center;
+      line-height: 1.5;
     }
 
     .footer {
@@ -90,6 +102,11 @@
       margin-top: 26px;
       color: #60758a;
       font-size: 13px;
+    }
+
+    #welcome {
+      text-align: center;
+      line-height: 1.6;
     }
   </style>
 </head>
@@ -113,6 +130,8 @@
         name="full_name"
         placeholder="Digite seu nome completo"
         autocomplete="name"
+        minlength="3"
+        maxlength="150"
         required
       >
 
@@ -123,77 +142,101 @@
         name="registration"
         placeholder="Digite sua matrícula"
         autocomplete="off"
+        minlength="2"
+        maxlength="50"
         required
       >
 
-      <button type="submit">
+      <button type="submit" id="login-button">
         Entrar no jogo
       </button>
+
+      <button
+        type="button"
+        id="register-button"
+        class="secondary"
+      >
+        Primeiro acesso — Cadastrar e entrar
+      </button>
+
+      <p id="message" class="message" role="status"></p>
     </form>
+
+    <section id="welcome" hidden>
+      <h2 id="welcome-title"></h2>
+      <p>
+        Seu acesso foi realizado com sucesso!
+      </p>
+      <p>
+        Em breve, suas cinco missões aparecerão aqui.
+      </p>
+    </section>
 
     <p class="footer">
       Semana da Qualidade 2026<br>
       Aprender, participar e evoluir!
     </p>
   </main>
-  
-<script>
-  // Substitua pelos dados públicos do seu Supabase.
-  const SUPABASE_URL = https://ondxajglpdbqjvcnighd.supabase.co/rest/v1/;
-  const SUPABASE_PUBLIC_KEY = sb_publishable_ZfkprrobzinhxFmg93iJeQ_5ffwV3dJ;
 
-  const form = document.getElementById("login-form");
-  const button = form.querySelector("button");
+  <script>
+    const SUPABASE_URL =
+      "https://ondxajglpdbqjvcnighd.supabase.co";
 
-  const message = document.createElement("p");
-  message.setAttribute("role", "status");
-  message.style.textAlign = "center";
-  message.style.marginTop = "16px";
-  form.appendChild(message);
+    const SUPABASE_PUBLIC_KEY =
+      sb_publishable_ZfkprrobzinhxFmg93iJeQ_5ffwV3dJ;
 
-  form.addEventListener("submit", async function (event) {
-    event.preventDefault();
+    const form = document.getElementById("login-form");
+    const loginButton = document.getElementById("login-button");
+    const registerButton = document.getElementById("register-button");
+    const message = document.getElementById("message");
 
-    const fullName =
-      document.getElementById("full_name").value.trim();
+    function setLoading(loading) {
+      loginButton.disabled = loading;
+      registerButton.disabled = loading;
 
-    const registration =
-      document.getElementById("registration").value.trim();
+      loginButton.textContent = loading
+        ? "Aguarde..."
+        : "Entrar no jogo";
 
-    if (!fullName || !registration) {
-      message.textContent = "Informe seu nome e matrícula.";
-      return;
+      registerButton.textContent = loading
+        ? "Aguarde..."
+        : "Primeiro acesso — Cadastrar e entrar";
     }
 
-    button.disabled = true;
-    button.textContent = "Verificando acesso...";
-    message.textContent = "";
+    function getFormData() {
+      return {
+        full_name: document
+          .getElementById("full_name")
+          .value.trim(),
+        registration: document
+          .getElementById("registration")
+          .value.trim()
+      };
+    }
 
-    try {
+    async function callFunction(functionName, data) {
       const response = await fetch(
-        `${SUPABASE_URL.replace(/\/$/, "")}/functions/v1/access-participant`,
+        `${SUPABASE_URL}/functions/v1/${functionName}`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "apikey": SUPABASE_PUBLIC_KEY
           },
-          body: JSON.stringify({
-            full_name: fullName,
-            registration: registration
-          })
+          body: JSON.stringify(data)
         }
       );
 
       const result = await response.json();
 
-      if (!response.ok || !result.success) {
-        message.textContent =
-          result.error || "Não foi possível realizar o acesso.";
-        return;
-      }
+      return {
+        ok: response.ok,
+        status: response.status,
+        result
+      };
+    }
 
-      // Guardar a sessão apenas durante esta aba do navegador.
+    function showWelcome(result) {
       sessionStorage.setItem(
         "missao_qualidade_session",
         JSON.stringify({
@@ -202,35 +245,88 @@
         })
       );
 
-      // Não manter a matrícula preenchida na tela.
       document.getElementById("registration").value = "";
 
       form.hidden = true;
 
-      const welcome = document.createElement("div");
-      const heading = document.createElement("h2");
-      const description = document.createElement("p");
-
-      heading.textContent =
+      document.getElementById("welcome-title").textContent =
         `Bem-vindo(a), ${result.participant.display_name}!`;
 
-      description.textContent =
-        "Acesso realizado com sucesso! " +
-        "Na próxima etapa, vamos mostrar suas cinco missões.";
-
-      welcome.appendChild(heading);
-      welcome.appendChild(description);
-      document.querySelector(".card").appendChild(welcome);
-
-    } catch (error) {
-      console.error("Erro ao acessar:", error);
-      message.textContent =
-        "Erro de conexão. Tente novamente.";
-    } finally {
-      button.disabled = false;
-      button.textContent = "Entrar no jogo";
+      document.getElementById("welcome").hidden = false;
     }
-  });
-</script>
+
+    async function login(data) {
+      const response = await callFunction(
+        "access-participant",
+        data
+      );
+
+      if (!response.ok || !response.result.success) {
+        throw new Error(
+          response.result.error ||
+          "Não foi possível realizar o acesso."
+        );
+      }
+
+      showWelcome(response.result);
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      if (!form.reportValidity()) return;
+
+      setLoading(true);
+      message.textContent = "";
+
+      try {
+        await login(getFormData());
+      } catch (error) {
+        message.textContent = error.message;
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    registerButton.addEventListener("click", async () => {
+      if (!form.reportValidity()) return;
+
+      setLoading(true);
+      message.textContent = "";
+
+      const data = getFormData();
+
+      try {
+        const registrationResponse = await callFunction(
+          "register-participant",
+          data
+        );
+
+        if (!registrationResponse.ok ||
+            !registrationResponse.result.success) {
+          if (registrationResponse.status === 409) {
+            throw new Error(
+              "Esta matrícula já está cadastrada. " +
+              "Confira o nome informado e utilize " +
+              "o botão 'Entrar no jogo'."
+            );
+          }
+
+          throw new Error(
+            registrationResponse.result.error ||
+            "Não foi possível realizar o cadastro."
+          );
+        }
+
+        // Após o cadastro, criar a sessão do participante.
+        await login(data);
+
+      } catch (error) {
+        message.textContent = error.message;
+      } finally {
+        setLoading(false);
+      }
+    });
+  </script>
 </body>
 </html>
