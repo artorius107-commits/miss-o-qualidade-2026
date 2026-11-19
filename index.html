@@ -1,0 +1,153 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
+  <title>Missão Qualidade 2026</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+      background: #eef4fa;
+      color: #17324d;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 440px;
+      background: white;
+      border-radius: 20px;
+      padding: 32px 24px;
+      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.08);
+    }
+
+    .icon {
+      font-size: 42px;
+      text-align: center;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 8px;
+      color: #075b9a;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #60758a;
+      margin-bottom: 28px;
+    }
+
+    label {
+      display: block;
+      font-weight: bold;
+      margin: 18px 0 8px;
+    }
+
+    input {
+      width: 100%;
+      padding: 14px;
+      border: 1px solid #cad7e3;
+      border-radius: 10px;
+      font-size: 16px;
+    }
+
+    input:focus {
+      outline: 2px solid #0875c1;
+    }
+
+    button {
+      width: 100%;
+      padding: 15px;
+      margin-top: 24px;
+      border: 0;
+      border-radius: 10px;
+      background: #0875c1;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #075b9a;
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 26px;
+      color: #60758a;
+      font-size: 13px;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="card">
+    <div class="icon">🏆</div>
+
+    <h1>MISSÃO QUALIDADE</h1>
+
+    <p class="subtitle">
+      Desafio dos 5 Dias<br>
+      23 a 27 de novembro de 2026
+    </p>
+
+    <form id="login-form">
+      <label for="full_name">Nome completo</label>
+      <input
+        type="text"
+        id="full_name"
+        name="full_name"
+        placeholder="Digite seu nome completo"
+        autocomplete="name"
+        required
+      >
+
+      <label for="registration">Matrícula</label>
+      <input
+        type="text"
+        id="registration"
+        name="registration"
+        placeholder="Digite sua matrícula"
+        autocomplete="off"
+        required
+      >
+
+      <button type="submit">
+        Entrar no jogo
+      </button>
+    </form>
+
+    <p class="footer">
+      Semana da Qualidade 2026<br>
+      Aprender, participar e evoluir!
+    </p>
+  </main>
+
+  <script>
+    document
+      .getElementById("login-form")
+      .addEventListener("submit", function (event) {
+        event.preventDefault();
+
+        alert(
+          "Tela inicial criada com sucesso! " +
+          "Na próxima etapa, conectaremos ao Supabase."
+        );
+      });
+  </script>
+</body>
+</html>
