@@ -395,80 +395,357 @@
       }
     });
 
-    // Abrir uma missão e consultar suas perguntas.
+    
+    // Jogo: iniciar, responder e finalizar missões.
     const missionDetails =
       document.getElementById("mission-details");
 
     const missionsList =
       document.getElementById("missions-list");
 
+    async function callGameFunction(name, data) {
+      const saved = JSON.parse(
+        sessionStorage.getItem("missao_qualidade_session") || "null"
+      );
+
+      if (!saved?.session?.token || !saved?.participant?.id) {
+        throw new Error(
+          "Sua sessão não foi encontrada. Entre novamente."
+        );
+      }
+
+      const response = await fetch(
+        `${SUPABASE_URL}/functions/v1/${name}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "apikey": SUPABASE_PUBLIC_KEY,
+            "x-session-token": saved.session.token
+          },
+          body: JSON.stringify(data)
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        const error = new Error(
+          result.error || result.message ||
+          "Não foi possível concluir a operação."
+        );
+        error.alreadyCompleted = result.already_completed;
+        throw error;
+      }
+
+      return result;
+    }
+
+    function createElement(tag, text) {
+      const element = document.createElement(tag);
+      if (text !== undefined) {
+        element.textContent = text;
+      }
+      return element;
+    }
+
+    function getOptions(challenge) {
+      const options = challenge.options;
+
+      if (Array.isArray(options)) {
+        return options.map((value, index) => [
+          "ABCD"[index],
+          typeof value === "string"
+            ? value
+            : String(value.text || value.label || "")
+        ]);
+      }
+
+      if (options && typeof options === "object") {
+        return Object.entries(options).map(([key, value]) => [
+          key.toUpperCase(),
+          typeof value === "string"
+            ? value
+            : String(value?.text || value?.label || "")
+        ]);
+      }
+
+      return [];
+    }
+
+    function showMissionList() {
+      missionDetails.hidden = true;
+      missionsList.hidden = false;
+    }
+
+    function addBackButton() {
+      const back = createElement(
+        "button",
+        "Voltar às missões"
+      );
+      back.type = "button";
+      back.addEventListener("click", showMissionList);
+      missionDetails.appendChild(back);
+    }
+
+    function showResult(title, text) {
+      missionDetails.replaceChildren();
+      missionDetails.appendChild(createElement("h3", title));
+      missionDetails.appendChild(createElement("p", text));
+      addBackButton();
+      missionsList.hidden = true;
+      missionDetails.hidden = false;
+    }
+
+    async function playMission(mission, attemptData) {
+      const challenges = [...mission.challenges].sort(
+        (a, b) => Number(a.step) - Number(b.step)
+      );
+
+      const answered = new Set(
+        (attemptData.answered_steps || []).map(
+          (item) => Number(item.step_number)
+        )
+      );
+
+      const attemptId = attemptData.attempt.id;
+
+      async function showNextQuestion() {
+        missionDetails.replaceChildren();
+
+        const challenge = challenges.find(
+          (item) => !answered.has(Number(item.step))
+        );
+
+        if (!challenge) {
+          const finishButton = createElement(
+            "button",
+            "Finalizar missão"
+          );
+
+          missionDetails.appendChild(
+            createElement("h3", "Respostas registradas!")
+          );
+
+          missionDetails.appendChild(
+            createElement(
+              "p",
+              "Você respondeu às três perguntas."
+            )
+          );
+
+          finishButton.addEventListener("click", async () => {
+            finishButton.disabled = true;
+            finishButton.textContent = "Finalizando...";
+
+            try {
+              const result = await callGameFunction(
+                "finish-mission",
+                { attempt_id: attemptId }
+              );
+
+              showResult(
+                "🏆 Missão concluída!",
+                `Sua pontuação: ${result.score} de 300 pontos.`
+              );
+            } catch (error) {
+              alert(error.message);
+              finishButton.disabled = false;
+              finishButton.textContent = "Finalizar missão";
+            }
+          });
+
+          missionDetails.appendChild(finishButton);
+          return;
+        }
+
+        missionDetails.appendChild(
+          createElement("h3", mission.title)
+        );
+
+        missionDetails.appendChild(
+          createElement(
+            "p",
+            `Pergunta ${challenge.step} de 3`
+          )
+        );
+
+        if (challenge.title) {
+          missionDetails.appendChild(
+            createElement("h4", challenge.title)
+          );
+        }
+
+        missionDetails.appendChild(
+          createElement("p", challenge.prompt)
+        );
+
+        const options = getOptions(challenge);
+
+        const questionForm = createElement("form");
+
+        options.forEach(([letter, text]) => {
+          const label = createElement("label");
+          label.style.fontWeight = "normal";
+          label.style.cursor = "pointer";
+
+          const radio = document.createElement("input");
+          radio.type = "radio";
+          radio.name = "answer";
+          radio.value = letter;
+          radio.required = true;
+          radio.style.width = "auto";
+          radio.style.marginRight = "10px";
+
+          label.appendChild(radio);
+          label.appendChild(
+            document.createTextNode(`${letter}) ${text}`)
+          );
+
+          questionForm.appendChild(label);
+        });
+
+        const submitButton = createElement(
+          "button",
+          "Confirmar resposta"
+        );
+        submitButton.type = "submit";
+        questionForm.appendChild(submitButton);
+
+        const feedback = createElement("p");
+        questionForm.appendChild(feedback);
+
+        questionForm.addEventListener("submit", async (event) => {
+          event.preventDefault();
+
+          const selected = questionForm.querySelector(
+            'input[name="answer"]:checked'
+          );
+
+          if (!selected) return;
+
+          submitButton.disabled = true;
+          submitButton.textContent = "Registrando...";
+
+          try {
+            const result = await callGameFunction(
+              "submit-answer",
+              {
+                attempt_id: attemptId,
+                step_number: Number(challenge.step),
+                selected_option: selected.value
+              }
+            );
+
+            answered.add(Number(challenge.step));
+
+            questionForm.querySelectorAll("input").forEach(
+              (input) => { input.disabled = true; }
+            );
+
+            feedback.textContent = result.is_correct
+              ? "✅ Resposta correta! +100 pontos."
+              : "Resposta registrada. +0 pontos.";
+
+            if (result.explanation) {
+              feedback.appendChild(
+                createElement("p", result.explanation)
+              );
+            }
+
+            submitButton.remove();
+
+            const nextButton = createElement(
+              "button",
+              answered.size === 3
+                ? "Ver conclusão"
+                : "Próxima pergunta"
+            );
+
+            nextButton.type = "button";
+            nextButton.addEventListener(
+              "click",
+              showNextQuestion
+            );
+
+            questionForm.appendChild(nextButton);
+
+          } catch (error) {
+            feedback.textContent = error.message;
+            submitButton.disabled = false;
+            submitButton.textContent = "Confirmar resposta";
+          }
+        });
+
+        missionDetails.appendChild(questionForm);
+      }
+
+      missionsList.hidden = true;
+      missionDetails.hidden = false;
+      await showNextQuestion();
+    }
+
     document.querySelectorAll("[data-day]").forEach((button) => {
       button.addEventListener("click", async () => {
         const dayNumber = Number(button.dataset.day);
-
         button.disabled = true;
         button.textContent = "Carregando...";
 
         try {
-          const response = await callFunction(
+          const saved = JSON.parse(
+            sessionStorage.getItem(
+              "missao_qualidade_session"
+            ) || "null"
+          );
+
+          if (!saved?.participant?.id) {
+            throw new Error(
+              "Entre novamente para iniciar a missão."
+            );
+          }
+
+          const missionResponse = await callFunction(
             "get-mission",
             { day_number: dayNumber }
           );
 
-          if (!response.ok || !response.result.success) {
+          if (!missionResponse.ok ||
+              !missionResponse.result.success) {
             throw new Error(
-              response.result.error ||
+              missionResponse.result.error ||
               "Não foi possível carregar a missão."
             );
           }
 
-          const mission = response.result.mission;
+          const mission = missionResponse.result.mission;
 
-          missionDetails.replaceChildren();
-
-          const heading = document.createElement("h3");
-          heading.textContent = mission.title;
-          missionDetails.appendChild(heading);
-
-          if (mission.description) {
-            const description = document.createElement("p");
-            description.textContent = mission.description;
-            missionDetails.appendChild(description);
-          }
-
-          mission.challenges.forEach((challenge, index) => {
-            const question = document.createElement("div");
-            question.style.marginTop = "24px";
-
-            const title = document.createElement("h4");
-            title.textContent =
-              `Pergunta ${index + 1}: ${challenge.title || ""}`;
-
-            const prompt = document.createElement("p");
-            prompt.textContent = challenge.prompt;
-
-            question.appendChild(title);
-            question.appendChild(prompt);
-
-            const options = challenge.options;
-
-            if (Array.isArray(options)) {
-              options.forEach((option, optionIndex) => {
-                const item = document.createElement("p");
-                const letter = "ABCD"[optionIndex] || "";
-                item.textContent =
-                  `${letter}) ${typeof option === "string"
-                    ? option
-                    : JSON.stringify(option)}`;
-                question.appendChild(item);
-              });
-            } else if (options && typeof options === "object") {
-              Object.entries(options).forEach(([letter, value]) => {
-                const item = document.createElement("p");
-                item.textContent = `${letter}) ${value}`;
-                question.appendChild(item);
-              });
+          const attempt = await callGameFunction(
+            "start-mission",
+            {
+              participant_id: saved.participant.id,
+              mission_id: mission.id
             }
+          );
+
+          await playMission(mission, attempt);
+
+        } catch (error) {
+          if (error.alreadyCompleted) {
+            showResult(
+              "🏆 Missão já concluída",
+              "Você já respondeu a esta missão. " +
+              "Não é possível realizar outra tentativa."
+            );
+          } else {
+            alert(error.message);
+          }
+        } finally {
+          button.disabled = false;
+          button.textContent = "Ver missão";
+        }
+      });
+    });            
+}
 
             missionDetails.appendChild(question);
           });
