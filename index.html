@@ -138,16 +138,103 @@
   </main>
 
   <script>
-    document
-      .getElementById("login-form")
-      .addEventListener("submit", function (event) {
-        event.preventDefault();
+    
+<script>
+  // Substitua pelos dados públicos do seu Supabase.
+  const SUPABASE_URL = https://ondxajglpdbqjvcnighd.supabase.co/rest/v1/;
+  const SUPABASE_PUBLIC_KEY = sb_publishable_ZfkprrobzinhxFmg93iJeQ_5ffwV3dJ;
 
-        alert(
-          "Tela inicial criada com sucesso! " +
-          "Na próxima etapa, conectaremos ao Supabase."
-        );
-      });
+  const form = document.getElementById("login-form");
+  const button = form.querySelector("button");
+
+  const message = document.createElement("p");
+  message.setAttribute("role", "status");
+  message.style.textAlign = "center";
+  message.style.marginTop = "16px";
+  form.appendChild(message);
+
+  form.addEventListener("submit", async function (event) {
+    event.preventDefault();
+
+    const fullName =
+      document.getElementById("full_name").value.trim();
+
+    const registration =
+      document.getElementById("registration").value.trim();
+
+    if (!fullName || !registration) {
+      message.textContent = "Informe seu nome e matrícula.";
+      return;
+    }
+
+    button.disabled = true;
+    button.textContent = "Verificando acesso...";
+    message.textContent = "";
+
+    try {
+      const response = await fetch(
+        `${SUPABASE_URL.replace(/\/$/, "")}/functions/v1/access-participant`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "apikey": SUPABASE_PUBLIC_KEY
+          },
+          body: JSON.stringify({
+            full_name: fullName,
+            registration: registration
+          })
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        message.textContent =
+          result.error || "Não foi possível realizar o acesso.";
+        return;
+      }
+
+      // Guardar a sessão apenas durante esta aba do navegador.
+      sessionStorage.setItem(
+        "missao_qualidade_session",
+        JSON.stringify({
+          participant: result.participant,
+          session: result.session
+        })
+      );
+
+      // Não manter a matrícula preenchida na tela.
+      document.getElementById("registration").value = "";
+
+      form.hidden = true;
+
+      const welcome = document.createElement("div");
+      const heading = document.createElement("h2");
+      const description = document.createElement("p");
+
+      heading.textContent =
+        `Bem-vindo(a), ${result.participant.display_name}!`;
+
+      description.textContent =
+        "Acesso realizado com sucesso! " +
+        "Na próxima etapa, vamos mostrar suas cinco missões.";
+
+      welcome.appendChild(heading);
+      welcome.appendChild(description);
+      document.querySelector(".card").appendChild(welcome);
+
+    } catch (error) {
+      console.error("Erro ao acessar:", error);
+      message.textContent =
+        "Erro de conexão. Tente novamente.";
+    } finally {
+      button.disabled = false;
+      button.textContent = "Entrar no jogo";
+    }
+  });
+</script>
+
   </script>
 </body>
 </html>
